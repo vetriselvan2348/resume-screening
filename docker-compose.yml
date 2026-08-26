@@ -1,0 +1,41 @@
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: resume-mysql
+
+    environment:
+      MYSQL_ROOT_PASSWORD: "2004"
+      MYSQL_DATABASE: resume_screening
+
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+    ports:
+      - "3307:3306"
+
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p2004"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  app:
+    build: .
+    container_name: resume-app
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+    ports:
+      - "8080:8080"
+
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/resume_screening?createDatabaseIfNotExist=true&connectTimeout=60000
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: "2004"
+
+volumes:
+  mysql_data:
