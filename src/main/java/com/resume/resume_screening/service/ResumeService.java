@@ -1,5 +1,6 @@
 package com.resume.resume_screening.service;
 
+import com.resume.resume_screening.dto.ApplicantResponseDTO;
 import com.resume.resume_screening.dto.ResumeResponseDTO;
 import com.resume.resume_screening.exception.ForbiddenException;
 import com.resume.resume_screening.exception.ResourceNotFoundException;
@@ -40,109 +41,78 @@ public class ResumeService {
         this.tika = new Tika();
     }
 
-    // =========================================================
-    // CANDIDATE - UPLOAD RESUME
-    // =========================================================
+    public ResumeResponseDTO uploadResume(
+            Long jobId,
+            MultipartFile file)
+            throws IOException, TikaException {
 
-   public ResumeResponseDTO uploadResume(
-        Long jobId,
-        MultipartFile file)
-        throws IOException, TikaException {
-
-    // =========================
-    // FILE VALIDATION
-    // =========================
-
-    if (file == null || file.isEmpty()) {
-        throw new IllegalArgumentException(
-                "Resume file is empty"
-        );
-    }
-
-    // Maximum file size = 5 MB
-    long maxSize = 5 * 1024 * 1024;
-
-    if (file.getSize() > maxSize) {
-        throw new IllegalArgumentException(
-                "Resume file must not exceed 5 MB"
-        );
-    }
-
-    String contentType = file.getContentType();
-
-    if (contentType == null ||
-            !(contentType.equals("application/pdf")
-            || contentType.equals("application/msword")
-            || contentType.equals(
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))) {
-
-        throw new IllegalArgumentException(
-                "Only PDF, DOC, and DOCX files are allowed"
-        );
-    }
-
-    // =========================
-    // FIND JOB
-    // =========================
-
-    Job job = jobRepository.findById(jobId)
-            .orElseThrow(() ->
-                    new ResourceNotFoundException(
-                            "Job not found"
-                    ));
-
-    // =========================
-    // GET LOGGED-IN CANDIDATE
-    // =========================
-
-    User candidate = getLoggedInUser();
-
-    // =========================
-    // EXTRACT RESUME TEXT
-    // =========================
-
-    String extractedText =
-            tika.parseToString(
-                    file.getInputStream()
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Resume file is empty"
             );
+        }
 
-    // =========================
-    // CREATE RESUME
-    // =========================
+        long maxSize = 5 * 1024 * 1024;
 
-    Resume resume = new Resume();
+        if (file.getSize() > maxSize) {
+            throw new IllegalArgumentException(
+                    "Resume file must not exceed 5 MB"
+            );
+        }
 
-    resume.setFileName(
-            file.getOriginalFilename()
-    );
+        String contentType = file.getContentType();
 
-    resume.setFileType(
-            contentType
-    );
+        if (contentType == null ||
+                !(contentType.equals("application/pdf")
+                || contentType.equals("application/msword")
+                || contentType.equals(
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))) {
 
-    resume.setExtractedText(
-            extractedText
-    );
+            throw new IllegalArgumentException(
+                    "Only PDF, DOC, and DOCX files are allowed"
+            );
+        }
 
-    resume.setJob(job);
+        Job job = jobRepository.findById(jobId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Job not found"
+                        ));
 
-    // Assign logged-in candidate
-    resume.setCandidate(candidate);
+        User candidate = getLoggedInUser();
 
-    // =========================
-    // SAVE
-    // =========================
+        String extractedText =
+                tika.parseToString(
+                        file.getInputStream()
+                );
 
-    Resume savedResume =
-            resumeRepository.save(resume);
+        Resume resume = new Resume();
 
-    return convertToDTO(savedResume);
-}
+        resume.setFileName(
+                file.getOriginalFilename()
+        );
 
+        resume.setFileType(
+                contentType
+        );
 
-    // =========================================================
-    // CANDIDATE - GET MY RESUMES
-    // =========================================================
+        resume.setFileData(
+                file.getBytes()
+        );
+
+        resume.setExtractedText(
+                extractedText
+        );
+
+        resume.setJob(job);
+
+        resume.setCandidate(candidate);
+
+        Resume savedResume =
+                resumeRepository.save(resume);
+
+        return convertToDTO(savedResume);
+    }
 
     public List<ResumeResponseDTO> getMyResumes() {
 
@@ -155,25 +125,17 @@ public class ResumeService {
                 .toList();
     }
 
-
-    // =========================================================
-    // RECRUITER - GET RESUMES FOR MY JOB
-    // =========================================================
-
     public List<ResumeResponseDTO> getResumesByJobId(
             Long jobId) {
 
-        // Find job
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
                                 "Job not found"
                         ));
 
-        // Get logged-in recruiter
         User recruiter = getLoggedInUser();
 
-        // Check ownership
         if (!job.getRecruiter()
                 .getId()
                 .equals(recruiter.getId())) {
@@ -183,7 +145,6 @@ public class ResumeService {
             );
         }
 
-        // Return resumes
         return resumeRepository
                 .findByJobId(jobId)
                 .stream()
@@ -191,10 +152,129 @@ public class ResumeService {
                 .toList();
     }
 
+    public List<ApplicantResponseDTO> getApplicantsByJobId(
+            Long jobId) {
 
-    // =========================================================
-    // GET LOGGED-IN USER
-    // =========================================================
+        Job job = jobRepository.findById(jobId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Job not found"
+                        ));
+
+        User recruiter = getLoggedInUser();
+
+        if (!job.getRecruiter()
+                .getId()
+                .equals(recruiter.getId())) {
+
+            throw new ForbiddenException(
+                    "You are not allowed to view applicants for this job"
+            );
+        }
+
+        return resumeRepository
+                .findByJobId(jobId)
+                .stream()
+                .map(this::convertToApplicantDTO)
+                .toList();
+    }
+
+    public void deleteResume(Long resumeId) {
+
+        User candidate = getLoggedInUser();
+
+        Resume resume = resumeRepository.findById(resumeId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Resume not found"
+                        ));
+
+        if (!resume.getCandidate()
+                .getId()
+                .equals(candidate.getId())) {
+
+            throw new ForbiddenException(
+                    "You are not allowed to delete this resume"
+            );
+        }
+
+        resumeRepository.delete(resume);
+    }
+
+    public byte[] getResumeFile(Long resumeId) {
+
+        User currentUser = getLoggedInUser();
+
+        Resume resume = resumeRepository.findById(resumeId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Resume not found"
+                        ));
+
+        if (resume.getCandidate()
+                .getId()
+                .equals(currentUser.getId())) {
+
+            return resume.getFileData();
+        }
+
+        if (resume.getJob()
+                .getRecruiter()
+                .getId()
+                .equals(currentUser.getId())) {
+
+            return resume.getFileData();
+        }
+
+        throw new ForbiddenException(
+                "You are not allowed to access this resume"
+        );
+    }
+
+    public String getResumeFileType(Long resumeId) {
+
+        User currentUser = getLoggedInUser();
+
+        Resume resume = resumeRepository.findById(resumeId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Resume not found"
+                        ));
+
+        if (resume.getCandidate()
+                .getId()
+                .equals(currentUser.getId()) ||
+                resume.getJob()
+                        .getRecruiter()
+                        .getId()
+                        .equals(currentUser.getId())) {
+
+            return resume.getFileType();
+        }
+
+        throw new ForbiddenException(
+                "You are not allowed to access this resume"
+        );
+    }
+
+    private ApplicantResponseDTO convertToApplicantDTO(
+            Resume resume) {
+
+        User candidate = resume.getCandidate();
+        Job job = resume.getJob();
+
+        return new ApplicantResponseDTO(
+                resume.getId(),
+                candidate.getId(),
+                candidate.getName(),
+                candidate.getEmail(),
+                resume.getFileName(),
+                resume.getFileType(),
+                resume.getExtractedText(),
+                job.getId(),
+                job.getTitle()
+        );
+    }
 
     private User getLoggedInUser() {
 
@@ -212,11 +292,6 @@ public class ResumeService {
                                 "User not found"
                         ));
     }
-
-
-    // =========================================================
-    // ENTITY -> DTO
-    // =========================================================
 
     private ResumeResponseDTO convertToDTO(
             Resume resume) {

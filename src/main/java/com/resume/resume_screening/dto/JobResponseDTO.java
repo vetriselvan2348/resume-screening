@@ -14,4 +14,5 @@ public class JobResponseDTO {
     private String description;
     private String requiredSkills;
     private Integer minimumExperience;
+    private boolean alreadyApplied;
 }

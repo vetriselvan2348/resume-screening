@@ -1,7 +1,6 @@
 package com.resume.resume_screening.repository;
 
 import com.resume.resume_screening.model.ScreeningResult;
-import com.resume.resume_screening.model.ScreeningResult;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -12,4 +11,5 @@ public interface ScreeningResultRepository
 
     List<ScreeningResult> findByJobIdOrderByScoreDesc(Long jobId);
     Optional<ScreeningResult> findByJobIdAndResumeId(Long jobId, Long resumeId);
+    void deleteByJobId(Long jobId);
 }

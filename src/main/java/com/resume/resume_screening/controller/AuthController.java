@@ -1,7 +1,6 @@
 package com.resume.resume_screening.controller;
 
 import com.resume.resume_screening.dto.LoginRequestDTO;
-import com.resume.resume_screening.dto.LoginResponseDTO;
 import com.resume.resume_screening.service.UserService;
 
 import jakarta.validation.Valid;
@@ -11,6 +10,10 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
+@CrossOrigin(
+    origins = "http://localhost:5173",
+    allowCredentials = "true"
+)
 public class AuthController {
 
     private final UserService userService;

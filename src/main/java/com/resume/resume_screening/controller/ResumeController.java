@@ -1,7 +1,12 @@
 package com.resume.resume_screening.controller;
 
+import com.resume.resume_screening.dto.ApplicantResponseDTO;
 import com.resume.resume_screening.dto.ResumeResponseDTO;
 import com.resume.resume_screening.service.ResumeService;
+
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -18,7 +23,6 @@ public class ResumeController {
         this.resumeService = resumeService;
     }
 
-    // Candidate: upload resume
     @PostMapping("/upload/{jobId}")
     public ResponseEntity<ResumeResponseDTO> uploadResume(
             @PathVariable Long jobId,
@@ -35,7 +39,6 @@ public class ResumeController {
         }
     }
 
-    // Candidate: get only their own resumes
     @GetMapping("/my")
     public ResponseEntity<List<ResumeResponseDTO>> getMyResumes() {
 
@@ -44,7 +47,6 @@ public class ResumeController {
         );
     }
 
-    // Recruiter: get resumes submitted for a job
     @GetMapping("/job/{jobId}")
     public ResponseEntity<List<ResumeResponseDTO>> getResumesByJob(
             @PathVariable Long jobId) {
@@ -52,5 +54,56 @@ public class ResumeController {
         return ResponseEntity.ok(
                 resumeService.getResumesByJobId(jobId)
         );
+    }
+
+    @GetMapping("/job/{jobId}/applicants")
+    public ResponseEntity<List<ApplicantResponseDTO>> getApplicantsByJob(
+            @PathVariable Long jobId) {
+
+        return ResponseEntity.ok(
+                resumeService.getApplicantsByJobId(jobId)
+        );
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteResume(
+            @PathVariable Long id) {
+
+        resumeService.deleteResume(id);
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/download")
+    public ResponseEntity<ByteArrayResource> downloadResume(
+            @PathVariable Long id) {
+
+        byte[] fileData =
+                resumeService.getResumeFile(id);
+
+        String fileType =
+                resumeService.getResumeFileType(id);
+
+        MediaType mediaType;
+
+        try {
+            mediaType =
+                    MediaType.parseMediaType(fileType);
+        } catch (Exception e) {
+            mediaType =
+                    MediaType.APPLICATION_OCTET_STREAM;
+        }
+
+        ByteArrayResource resource =
+                new ByteArrayResource(fileData);
+
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .contentLength(fileData.length)
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        "inline"
+                )
+                .body(resource);
     }
 }

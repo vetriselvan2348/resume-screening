@@ -20,6 +20,10 @@ public class Resume {
 
     private String fileType;
 
+    @Lob
+    @Column(columnDefinition = "LONGBLOB")
+    private byte[] fileData;
+
     @Column(columnDefinition = "LONGTEXT")
     private String extractedText;
 

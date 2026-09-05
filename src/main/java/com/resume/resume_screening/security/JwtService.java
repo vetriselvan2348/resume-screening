@@ -15,8 +15,7 @@ public class JwtService {
             "resumeScreeningSecretKeyForJwtAuthentication123456";
 
     private static final long EXPIRATION_TIME =
-            1000 * 60 * 60; // 1 hour
-
+        1000L * 60 * 60 * 4;
     private final SecretKey key;
 
     public JwtService() {

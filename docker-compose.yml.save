@@ -5,8 +5,7 @@ services:
     container_name: resume-mysql
 
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: resume_screening
+            MYSQL_DATABASE: resume_screening
 
     volumes:
       - mysql_data:/var/lib/mysql
@@ -15,7 +14,7 @@ services:
       - "3307:3306"
 
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p2004"]
       interval: 5s
       timeout: 5s
       retries: 30
@@ -33,10 +32,9 @@ services:
       - "8080:8080"
 
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/resume_screening
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/resume_screening?createDatabaseIfNotExist=true&connectTimeout=60000
       SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      SPRING_DATASOURCE_PASSWORD: "2004"
 
 volumes:
   mysql_data:

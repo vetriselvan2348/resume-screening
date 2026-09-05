@@ -28,6 +28,23 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.NOT_FOUND)
                 .body(response);
     }
+
+    @ExceptionHandler(DuplicateResourceException.class)
+    public ResponseEntity<Map<String, Object>> handleDuplicateResource(
+            DuplicateResourceException ex) {
+
+        Map<String, Object> response = Map.of(
+                "timestamp", LocalDateTime.now(),
+                "status", 409,
+                "error", "Conflict",
+                "message", ex.getMessage()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(response);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationErrors(
             MethodArgumentNotValidException ex) {
@@ -54,49 +71,54 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.BAD_REQUEST)
                 .body(response);
     }
+
     @ExceptionHandler(ForbiddenException.class)
-public ResponseEntity<Map<String, Object>> handleForbidden(
-        ForbiddenException ex) {
+    public ResponseEntity<Map<String, Object>> handleForbidden(
+            ForbiddenException ex) {
 
-    Map<String, Object> response = Map.of(
-            "timestamp", LocalDateTime.now(),
-            "status", 403,
-            "error", "Forbidden",
-            "message", ex.getMessage()
-    );
+        Map<String, Object> response = Map.of(
+                "timestamp", LocalDateTime.now(),
+                "status", 403,
+                "error", "Forbidden",
+                "message", ex.getMessage()
+        );
 
-    return ResponseEntity
-            .status(HttpStatus.FORBIDDEN)
-            .body(response);
-}
-@ExceptionHandler(Exception.class)
-public ResponseEntity<Map<String, Object>> handleGeneralException(
-        Exception ex) {
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(response);
+    }
 
-    Map<String, Object> response = Map.of(
-            "timestamp", LocalDateTime.now(),
-            "status", 500,
-            "error", "Internal Server Error",
-            "message", "Something went wrong"
-    );
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleBadRequest(
+            IllegalArgumentException ex) {
 
-    return ResponseEntity
-            .status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(response);
-}
-@ExceptionHandler(IllegalArgumentException.class)
-public ResponseEntity<Map<String, Object>> handleBadRequest(
-        IllegalArgumentException ex) {
+        Map<String, Object> response = Map.of(
+                "timestamp", LocalDateTime.now(),
+                "status", 400,
+                "error", "Bad Request",
+                "message", ex.getMessage()
+        );
 
-    Map<String, Object> response = Map.of(
-            "timestamp", LocalDateTime.now(),
-            "status", 400,
-            "error", "Bad Request",
-            "message", ex.getMessage()
-    );
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(response);
+    }
 
-    return ResponseEntity
-            .status(HttpStatus.BAD_REQUEST)
-            .body(response);
-}
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, Object>> handleGeneralException(
+            Exception ex) {
+
+        ex.printStackTrace();
+
+        Map<String, Object> response = Map.of(
+                "timestamp", LocalDateTime.now(),
+                "status", 500,
+                "error", "Internal Server Error",
+                "message", ex.getMessage()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(response);
+    }
 }

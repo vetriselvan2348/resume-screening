@@ -1,5 +1,7 @@
 package com.resume.resume_screening.controller;
 
+import com.resume.resume_screening.dto.ProfileUpdateDTO;
+import com.resume.resume_screening.dto.RecruiterRegisterRequestDTO;
 import com.resume.resume_screening.dto.UserRequestDTO;
 import com.resume.resume_screening.dto.UserResponseDTO;
 import com.resume.resume_screening.service.UserService;
@@ -21,17 +23,48 @@ public class UserController {
     public ResponseEntity<UserResponseDTO> createUser(
             @Valid @RequestBody UserRequestDTO userRequestDTO) {
 
-        UserResponseDTO response = userService.saveUser(userRequestDTO);
+        UserResponseDTO response =
+                userService.saveUser(userRequestDTO);
 
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/recruiter/register")
+    public ResponseEntity<UserResponseDTO> registerRecruiter(
+            @Valid @RequestBody RecruiterRegisterRequestDTO request) {
+
+        UserResponseDTO response =
+                userService.registerRecruiter(request);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<UserResponseDTO> getMyProfile() {
+
+        return ResponseEntity.ok(
+                userService.getMyProfile()
+        );
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<UserResponseDTO> updateMyProfile(
+            @Valid @RequestBody ProfileUpdateDTO profileUpdateDTO) {
+
+        return ResponseEntity.ok(
+                userService.updateMyProfile(profileUpdateDTO)
+        );
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<UserResponseDTO> getUserById(
             @PathVariable Long id) {
 
-        return ResponseEntity.ok(userService.getUserById(id));
+        return ResponseEntity.ok(
+                userService.getUserById(id)
+        );
     }
-    
+
     @PutMapping("/{id}")
     public ResponseEntity<UserResponseDTO> updateUser(
             @PathVariable Long id,
@@ -42,8 +75,10 @@ public class UserController {
 
         return ResponseEntity.ok(response);
     }
+
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteUser(
+            @PathVariable Long id) {
 
         userService.deleteUser(id);
 

@@ -1,5 +1,6 @@
 package com.resume.resume_screening.dto;
 
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -7,15 +8,10 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class LoginResponseDTO {
-
-    private String token;
-
-    private Long userId;
+public class ProfileUpdateDTO {
 
     private String name;
 
-    private String email;
-
-    private String role;
+    @Size(min = 6, message = "Password must contain at least 6 characters")
+    private String password;
 }
