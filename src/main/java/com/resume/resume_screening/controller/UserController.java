@@ -56,6 +56,14 @@ public class UserController {
         );
     }
 
+    @DeleteMapping("/me")
+    public ResponseEntity<Void> deleteMyAccount() {
+
+        userService.deleteMyAccount();
+
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<UserResponseDTO> getUserById(
             @PathVariable Long id) {

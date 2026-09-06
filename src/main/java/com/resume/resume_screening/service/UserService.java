@@ -12,17 +12,22 @@ import com.resume.resume_screening.exception.ResourceNotFoundException;
 import com.resume.resume_screening.model.OtpPurpose;
 import com.resume.resume_screening.model.Role;
 import com.resume.resume_screening.model.User;
+import com.resume.resume_screening.repository.ResumeRepository;
+import com.resume.resume_screening.repository.ScreeningResultRepository;
 import com.resume.resume_screening.repository.UserRepository;
 import com.resume.resume_screening.security.JwtService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class UserService {
 
     private final UserRepository userRepository;
+    private final ResumeRepository resumeRepository;
+    private final ScreeningResultRepository screeningResultRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final OtpService otpService;
@@ -31,10 +36,14 @@ public class UserService {
 
     public UserService(
             UserRepository userRepository,
+            ResumeRepository resumeRepository,
+            ScreeningResultRepository screeningResultRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             OtpService otpService) {
         this.userRepository = userRepository;
+        this.resumeRepository = resumeRepository;
+        this.screeningResultRepository = screeningResultRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.otpService = otpService;
@@ -316,17 +325,47 @@ public class UserService {
         userRepository.delete(user);
     }
 
+    @Transactional
+    public void deleteMyAccount() {
+
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null ||
+                authentication.getName() == null) {
+            throw new ResourceNotFoundException("User not found");
+        }
+
+        User user = userRepository.findByEmail(
+                authentication.getName()
+        ).orElseThrow(() ->
+                new ResourceNotFoundException("User not found"));
+
+        if (user.getRole() != Role.CANDIDATE) {
+            throw new IllegalArgumentException(
+                    "Only candidates can delete their account"
+            );
+        }
+
+        var resumes = resumeRepository.findByCandidateId(user.getId());
+
+        for (var resume : resumes) {
+            screeningResultRepository.deleteByResumeId(resume.getId());
+        }
+
+        screeningResultRepository.flush();
+        resumeRepository.deleteAll(resumes);
+        resumeRepository.flush();
+
+        userRepository.delete(user);
+        userRepository.flush();
+    }
+
     public LoginResponseDTO login(LoginRequestDTO request) {
 
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() ->
                         new ResourceNotFoundException("User not found"));
-
-        if (Boolean.FALSE.equals(user.getEmailVerified())) {
-            throw new IllegalArgumentException(
-                    "Please verify your email before logging in"
-            );
-        }
 
         if (!passwordEncoder.matches(
                 request.getPassword(),
@@ -334,6 +373,12 @@ public class UserService {
 
             throw new IllegalArgumentException(
                     "Invalid email or password"
+            );
+        }
+
+        if (Boolean.FALSE.equals(user.getEmailVerified())) {
+            throw new IllegalArgumentException(
+                    "Please verify your email before logging in"
             );
         }
 
