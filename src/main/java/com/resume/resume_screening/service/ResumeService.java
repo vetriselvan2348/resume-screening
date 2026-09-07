@@ -9,6 +9,7 @@ import com.resume.resume_screening.model.Resume;
 import com.resume.resume_screening.model.User;
 import com.resume.resume_screening.repository.JobRepository;
 import com.resume.resume_screening.repository.ResumeRepository;
+import com.resume.resume_screening.repository.ScreeningResultRepository;
 import com.resume.resume_screening.repository.UserRepository;
 
 import org.apache.tika.Tika;
@@ -17,6 +18,7 @@ import org.apache.tika.exception.TikaException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -28,16 +30,19 @@ public class ResumeService {
     private final ResumeRepository resumeRepository;
     private final JobRepository jobRepository;
     private final UserRepository userRepository;
+    private final ScreeningResultRepository screeningResultRepository;
     private final Tika tika;
 
     public ResumeService(
             ResumeRepository resumeRepository,
             JobRepository jobRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            ScreeningResultRepository screeningResultRepository) {
 
         this.resumeRepository = resumeRepository;
         this.jobRepository = jobRepository;
         this.userRepository = userRepository;
+        this.screeningResultRepository = screeningResultRepository;
         this.tika = new Tika();
     }
 
@@ -179,6 +184,7 @@ public class ResumeService {
                 .toList();
     }
 
+    @Transactional
     public void deleteResume(Long resumeId) {
 
         User candidate = getLoggedInUser();
@@ -198,7 +204,11 @@ public class ResumeService {
             );
         }
 
+        screeningResultRepository.deleteByResumeId(resumeId);
+        screeningResultRepository.flush();
+
         resumeRepository.delete(resume);
+        resumeRepository.flush();
     }
 
     public byte[] getResumeFile(Long resumeId) {

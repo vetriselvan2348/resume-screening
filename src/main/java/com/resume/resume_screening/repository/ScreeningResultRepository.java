@@ -12,4 +12,5 @@ public interface ScreeningResultRepository
     List<ScreeningResult> findByJobIdOrderByScoreDesc(Long jobId);
     Optional<ScreeningResult> findByJobIdAndResumeId(Long jobId, Long resumeId);
     void deleteByJobId(Long jobId);
+    void deleteByResumeId(Long resumeId);
 }

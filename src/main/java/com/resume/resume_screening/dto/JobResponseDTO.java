@@ -15,4 +15,7 @@ public class JobResponseDTO {
     private String requiredSkills;
     private Integer minimumExperience;
     private boolean alreadyApplied;
+    private boolean ownedByCurrentRecruiter;
+    private String recruiterName;
+    private String recruiterEmail;
 }

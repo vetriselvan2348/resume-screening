@@ -31,7 +31,6 @@ public class JobService {
             UserRepository userRepository,
             ResumeRepository resumeRepository,
             ScreeningResultRepository screeningResultRepository) {
-
         this.jobRepository = jobRepository;
         this.userRepository = userRepository;
         this.resumeRepository = resumeRepository;
@@ -58,7 +57,10 @@ public class JobService {
                 savedJob.getDescription(),
                 savedJob.getRequiredSkills(),
                 savedJob.getMinimumExperience(),
-                false
+                false,
+                true,
+                recruiter.getName(),
+                recruiter.getEmail()
         );
     }
 
@@ -86,7 +88,11 @@ public class JobService {
                             job.getDescription(),
                             job.getRequiredSkills(),
                             job.getMinimumExperience(),
-                            alreadyApplied
+                            alreadyApplied,
+                            currentUser.getRole().name().equals("RECRUITER")
+                                    && job.getRecruiter().getId().equals(currentUser.getId()),
+                            job.getRecruiter().getName(),
+                            job.getRecruiter().getEmail()
                     );
                 })
                 .toList();
@@ -96,9 +102,7 @@ public class JobService {
 
         Job job = jobRepository.findById(id)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Job not found"
-                        ));
+                        new ResourceNotFoundException("Job not found"));
 
         User currentUser = getLoggedInUser();
 
@@ -118,7 +122,11 @@ public class JobService {
                 job.getDescription(),
                 job.getRequiredSkills(),
                 job.getMinimumExperience(),
-                alreadyApplied
+                alreadyApplied,
+                currentUser.getRole().name().equals("RECRUITER")
+                        && job.getRecruiter().getId().equals(currentUser.getId()),
+                job.getRecruiter().getName(),
+                job.getRecruiter().getEmail()
         );
     }
 
@@ -128,9 +136,7 @@ public class JobService {
 
         Job job = jobRepository.findById(id)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Job not found"
-                        ));
+                        new ResourceNotFoundException("Job not found"));
 
         User currentUser = getLoggedInUser();
 
@@ -155,7 +161,10 @@ public class JobService {
                 updatedJob.getDescription(),
                 updatedJob.getRequiredSkills(),
                 updatedJob.getMinimumExperience(),
-                false
+                false,
+                true,
+                updatedJob.getRecruiter().getName(),
+                updatedJob.getRecruiter().getEmail()
         );
     }
 
@@ -164,9 +173,7 @@ public class JobService {
 
         Job job = jobRepository.findById(id)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Job not found"
-                        ));
+                        new ResourceNotFoundException("Job not found"));
 
         User currentUser = getLoggedInUser();
 
@@ -199,8 +206,6 @@ public class JobService {
 
         return userRepository.findByEmail(email)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "User not found"
-                        ));
+                        new ResourceNotFoundException("User not found"));
     }
 }
