@@ -12,6 +12,7 @@ import com.resume.resume_screening.exception.ResourceNotFoundException;
 import com.resume.resume_screening.model.OtpPurpose;
 import com.resume.resume_screening.model.Role;
 import com.resume.resume_screening.model.User;
+import com.resume.resume_screening.repository.JobRepository;
 import com.resume.resume_screening.repository.ResumeRepository;
 import com.resume.resume_screening.repository.ScreeningResultRepository;
 import com.resume.resume_screening.repository.UserRepository;
@@ -26,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final JobRepository jobRepository;
     private final ResumeRepository resumeRepository;
     private final ScreeningResultRepository screeningResultRepository;
     private final PasswordEncoder passwordEncoder;
@@ -36,12 +38,14 @@ public class UserService {
 
     public UserService(
             UserRepository userRepository,
+            JobRepository jobRepository,
             ResumeRepository resumeRepository,
             ScreeningResultRepository screeningResultRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             OtpService otpService) {
         this.userRepository = userRepository;
+        this.jobRepository = jobRepository;
         this.resumeRepository = resumeRepository;
         this.screeningResultRepository = screeningResultRepository;
         this.passwordEncoder = passwordEncoder;
@@ -341,21 +345,33 @@ public class UserService {
         ).orElseThrow(() ->
                 new ResourceNotFoundException("User not found"));
 
-        if (user.getRole() != Role.CANDIDATE) {
-            throw new IllegalArgumentException(
-                    "Only candidates can delete their account"
-            );
+        if (user.getRole() == Role.CANDIDATE) {
+            var resumes = resumeRepository.findByCandidateId(user.getId());
+
+            for (var resume : resumes) {
+                screeningResultRepository.deleteByResumeId(resume.getId());
+            }
+
+            screeningResultRepository.flush();
+            resumeRepository.deleteAll(resumes);
+            resumeRepository.flush();
         }
 
-        var resumes = resumeRepository.findByCandidateId(user.getId());
+        if (user.getRole() == Role.RECRUITER) {
+            var jobs = jobRepository.findByRecruiterId(user.getId());
 
-        for (var resume : resumes) {
-            screeningResultRepository.deleteByResumeId(resume.getId());
+            for (var job : jobs) {
+                screeningResultRepository.deleteByJobId(job.getId());
+                screeningResultRepository.flush();
+
+                resumeRepository.deleteByJobId(job.getId());
+                resumeRepository.flush();
+
+                jobRepository.delete(job);
+            }
+
+            jobRepository.flush();
         }
-
-        screeningResultRepository.flush();
-        resumeRepository.deleteAll(resumes);
-        resumeRepository.flush();
 
         userRepository.delete(user);
         userRepository.flush();
