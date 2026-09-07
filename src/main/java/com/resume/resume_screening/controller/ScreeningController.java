@@ -28,10 +28,9 @@ public class ScreeningController {
     public ResponseEntity<ScreeningResultResponseDTO> screenResume(
             @RequestBody ScreeningResultRequestDTO request) {
 
-        ScreeningResultResponseDTO response =
-                screeningService.screenResume(request);
-
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(
+                screeningService.screenResume(request)
+        );
     }
 
     @GetMapping("/job/{jobId}")
@@ -49,7 +48,10 @@ public class ScreeningController {
             @PathVariable Long resumeId) {
 
         return ResponseEntity.ok(
-                geminiService.analyzeResume(jobId, resumeId)
+                screeningService.analyzeAndSaveAI(
+                        jobId,
+                        resumeId
+                )
         );
     }
 }

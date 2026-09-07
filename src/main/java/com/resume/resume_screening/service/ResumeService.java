@@ -86,6 +86,15 @@ public class ResumeService {
 
         User candidate = getLoggedInUser();
 
+        if (resumeRepository.existsByCandidateIdAndJobId(
+                candidate.getId(),
+                jobId)) {
+
+            throw new IllegalArgumentException(
+                    "You have already applied for this job"
+            );
+        }
+
         String extractedText =
                 tika.parseToString(
                         file.getInputStream()
@@ -253,13 +262,39 @@ public class ResumeService {
 
         if (resume.getCandidate()
                 .getId()
-                .equals(currentUser.getId()) ||
-                resume.getJob()
-                        .getRecruiter()
-                        .getId()
-                        .equals(currentUser.getId())) {
+                .equals(currentUser.getId())
+                || resume.getJob()
+                .getRecruiter()
+                .getId()
+                .equals(currentUser.getId())) {
 
             return resume.getFileType();
+        }
+
+        throw new ForbiddenException(
+                "You are not allowed to access this resume"
+        );
+    }
+
+    public String getResumeFileName(Long resumeId) {
+
+        User currentUser = getLoggedInUser();
+
+        Resume resume = resumeRepository.findById(resumeId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Resume not found"
+                        ));
+
+        if (resume.getCandidate()
+                .getId()
+                .equals(currentUser.getId())
+                || resume.getJob()
+                .getRecruiter()
+                .getId()
+                .equals(currentUser.getId())) {
+
+            return resume.getFileName();
         }
 
         throw new ForbiddenException(
@@ -271,7 +306,6 @@ public class ResumeService {
             Resume resume) {
 
         User candidate = resume.getCandidate();
-        Job job = resume.getJob();
 
         return new ApplicantResponseDTO(
                 resume.getId(),
@@ -281,8 +315,26 @@ public class ResumeService {
                 resume.getFileName(),
                 resume.getFileType(),
                 resume.getExtractedText(),
-                job.getId(),
-                job.getTitle()
+                resume.getJob() == null
+                        ? null
+                        : resume.getJob().getId(),
+                resume.getJob() == null
+                        ? null
+                        : resume.getJob().getTitle()
+        );
+    }
+
+    private ResumeResponseDTO convertToDTO(
+            Resume resume) {
+
+        return new ResumeResponseDTO(
+                resume.getId(),
+                resume.getFileName(),
+                resume.getFileType(),
+                resume.getExtractedText(),
+                resume.getJob() == null
+                        ? null
+                        : resume.getJob().getId()
         );
     }
 
@@ -293,24 +345,19 @@ public class ResumeService {
                         .getContext()
                         .getAuthentication();
 
-        String email = authentication.getName();
+        if (authentication == null ||
+                authentication.getName() == null) {
+
+            throw new ResourceNotFoundException(
+                    "User not found"
+            );
+        }
 
         return userRepository
-                .findByEmail(email)
+                .findByEmail(authentication.getName())
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
                                 "User not found"
                         ));
-    }
-
-    private ResumeResponseDTO convertToDTO(
-            Resume resume) {
-
-        return new ResumeResponseDTO(
-                resume.getId(),
-                resume.getFileName(),
-                resume.getFileType(),
-                resume.getExtractedText()
-        );
     }
 }

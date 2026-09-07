@@ -10,10 +10,8 @@ import lombok.NoArgsConstructor;
 public class ResumeResponseDTO {
 
     private Long id;
-
     private String fileName;
-
     private String fileType;
-
     private String extractedText;
+    private Long jobId;
 }

@@ -1,5 +1,7 @@
 package com.resume.resume_screening.service;
 
+import com.resume.resume_screening.dto.AIResumeAnalysisDTO;
+
 import com.resume.resume_screening.dto.ScreeningResultRequestDTO;
 import com.resume.resume_screening.dto.ScreeningResultResponseDTO;
 import com.resume.resume_screening.exception.ForbiddenException;
@@ -17,7 +19,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -27,17 +28,20 @@ public class ScreeningService {
     private final ResumeRepository resumeRepository;
     private final ScreeningResultRepository screeningResultRepository;
     private final UserRepository userRepository;
+    private final GeminiService geminiService;
 
     public ScreeningService(
             JobRepository jobRepository,
             ResumeRepository resumeRepository,
             ScreeningResultRepository screeningResultRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            GeminiService geminiService) {
 
         this.jobRepository = jobRepository;
         this.resumeRepository = resumeRepository;
         this.screeningResultRepository = screeningResultRepository;
         this.userRepository = userRepository;
+        this.geminiService = geminiService;
     }
 
     // =========================================================
@@ -47,17 +51,12 @@ public class ScreeningService {
     public ScreeningResultResponseDTO screenResume(
             ScreeningResultRequestDTO request) {
 
-        // Find job
         Job job = jobRepository.findById(request.getJobId())
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Job not found"
-                        ));
+                        new ResourceNotFoundException("Job not found"));
 
-        // Get logged-in recruiter
         User recruiter = getLoggedInUser();
 
-        // Check job ownership
         if (!job.getRecruiter()
                 .getId()
                 .equals(recruiter.getId())) {
@@ -67,15 +66,11 @@ public class ScreeningService {
             );
         }
 
-        // Find resume
         Resume resume = resumeRepository
                 .findById(request.getResumeId())
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Resume not found"
-                        ));
+                        new ResourceNotFoundException("Resume not found"));
 
-        // Make sure resume belongs to this job
         if (!resume.getJob()
                 .getId()
                 .equals(job.getId())) {
@@ -85,50 +80,11 @@ public class ScreeningService {
             );
         }
 
-        // Get resume text
-        String resumeText =
-                resume.getExtractedText()
-                        .toLowerCase();
+        var aiAnalysis = geminiService.analyzeResume(
+                job.getId(),
+                resume.getId()
+        );
 
-        // Get required skills
-        String[] requiredSkills =
-                job.getRequiredSkills()
-                        .toLowerCase()
-                        .split(",");
-
-        List<String> matchedSkills =
-                new ArrayList<>();
-
-        List<String> missingSkills =
-                new ArrayList<>();
-
-        // Match skills
-        for (String skill : requiredSkills) {
-
-            skill = skill.trim();
-
-            if (resumeText.contains(skill)) {
-
-                matchedSkills.add(skill);
-
-            } else {
-
-                missingSkills.add(skill);
-            }
-        }
-
-        // Calculate score
-        double score = 0;
-
-        if (requiredSkills.length > 0) {
-
-            score =
-                    ((double) matchedSkills.size()
-                            / requiredSkills.length)
-                            * 100;
-        }
-
-        // Find existing result or create new one
         ScreeningResult result =
                 screeningResultRepository
                         .findByJobIdAndResumeId(
@@ -139,15 +95,18 @@ public class ScreeningService {
 
         result.setJob(job);
         result.setResume(resume);
-        result.setScore(score);
+        result.setScore(aiAnalysis.getOverallScore());
         result.setMatchedSkills(
-                String.join(", ", matchedSkills)
+                aiAnalysis.getStrengths() == null
+                        ? ""
+                        : String.join(", ", aiAnalysis.getStrengths())
         );
         result.setMissingSkills(
-                String.join(", ", missingSkills)
+                aiAnalysis.getMissingSkills() == null
+                        ? ""
+                        : String.join(", ", aiAnalysis.getMissingSkills())
         );
 
-        // Save result
         ScreeningResult savedResult =
                 screeningResultRepository.save(result);
 
@@ -161,10 +120,74 @@ public class ScreeningService {
         );
     }
 
-
     // =========================================================
     // GET SCREENING RESULTS FOR MY JOB
     // =========================================================
+
+    public AIResumeAnalysisDTO analyzeAndSaveAI(
+            Long jobId,
+            Long resumeId) {
+
+        Job job = jobRepository.findById(jobId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Job not found"));
+
+        Resume resume = resumeRepository.findById(resumeId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Resume not found"));
+
+        User recruiter = getLoggedInUser();
+
+        if (!job.getRecruiter()
+                .getId()
+                .equals(recruiter.getId())) {
+
+            throw new ForbiddenException(
+                    "You are not allowed to analyze this resume"
+            );
+        }
+
+        if (!resume.getJob()
+                .getId()
+                .equals(job.getId())) {
+
+            throw new ForbiddenException(
+                    "Resume does not belong to this job"
+            );
+        }
+
+        AIResumeAnalysisDTO analysis =
+                geminiService.analyzeResume(
+                        jobId,
+                        resumeId
+                );
+
+        ScreeningResult result =
+                screeningResultRepository
+                        .findByJobIdAndResumeId(
+                                jobId,
+                                resumeId
+                        )
+                        .orElse(new ScreeningResult());
+
+        result.setJob(job);
+        result.setResume(resume);
+        result.setScore(analysis.getOverallScore());
+        result.setMatchedSkills(
+                analysis.getStrengths() == null
+                        ? ""
+                        : String.join(", ", analysis.getStrengths())
+        );
+        result.setMissingSkills(
+                analysis.getMissingSkills() == null
+                        ? ""
+                        : String.join(", ", analysis.getMissingSkills())
+        );
+
+        screeningResultRepository.save(result);
+
+        return analysis;
+    }
 
     public List<ScreeningResultResponseDTO> getResultsByJobId(
             Long jobId) {
